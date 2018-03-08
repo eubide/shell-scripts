@@ -6,7 +6,7 @@ version="1.0.0"              # Sets version variable
 #
 # HISTORY:
 #
-# * DATE - v1.0.0  - First Creation
+# * 2016-04-19 - v1.0.0  - First Creation
 #
 # ##################################################
 
@@ -97,8 +97,6 @@ function mainScript() {
     #
     # Credit: https://github.com/cowboy/dotfiles
 
-
-
     function to_install() {
       local desired installed i desired_s installed_s remain
       # Convert args to arrays, handling both space- and newline-separated lists.
@@ -130,7 +128,7 @@ function mainScript() {
       # sign in to the app store
       if [[ $INSTALLCOMMAND =~ mas ]]; then
         # Lookup the name of the application being installed
-        appName="$(curl -s https://itunes.apple.com/lookup?id=803453959 | jq .results[].trackName)"
+        appName="$(curl -s https://itunes.apple.com/lookup?id=$item | jq .results[].trackName)"
         if isAppInstalled "${appName}" &> /dev/null; then
           continue
         fi
@@ -162,7 +160,7 @@ function mainScript() {
             notice "Installing ${item}"
             # FFMPEG takes additional flags
             if [[ "${item}" = "ffmpeg" ]]; then
-              install-ffmpeg
+              installffmpeg
             elif [[ "${item}" = "tldr" ]]; then
               brew tap tldr-pages/tldr
               brew install tldr
@@ -177,7 +175,7 @@ function mainScript() {
           notice "Installing ${item}"
           # FFMPEG takes additional flags
           if [[ "${item}" = "ffmpeg" ]]; then
-            install-ffmpeg
+            installffmpeg
           elif [[ "${item}" = "tldr" ]]; then
             brew tap tldr-pages/tldr
             brew install tldr
@@ -254,9 +252,10 @@ function mainScript() {
   function installHomebrewTaps() {
     brew tap homebrew/dupes
     brew tap homebrew/versions
+    brew install argon/mas/mas
     brew tap argon/mas
     brew tap caskroom/cask
-    brew tap caskroom/fonts
+    # brew tap caskroom/fonts
     brew tap caskroom/versions
   }
 
@@ -344,6 +343,7 @@ function mainScript() {
       marked
       mailplane
       moom
+      ngrok
       nvalt
       omnifocus
       omnifocus-clip-o-tron
@@ -487,7 +487,6 @@ function mainScript() {
       tree
       unison              # Rsynch like tool
     )
-
     doInstall
 
     success "Done installing Homebrew packages"
@@ -584,12 +583,10 @@ function mainScript() {
       "Dropbox/sharedConfiguration/Mackup/Library/Application Support/PaxGalaxia/net.txt"
       "Dropbox/sharedConfiguration/Mackup/Pictures/DeviantartBackup/clouds2.jpg"
       "Dropbox/sharedConfiguration/Mackup/Library/init/bash/aliases.bash"
-      "Dropbox/sharedConfiguration/Mackup/Downloads"
       "Dropbox/sharedConfiguration/Mackup/.mackup/my-files.cfg"
       "Dropbox/sharedConfiguration/App Configuration Files/Alfred2/Alfred.alfredpreferences"
       "Dropbox/sharedConfiguration/Mackup/Library/Preferences/com.dustinrue.ControlPlane.plist"
       )
-
 
     info "Confirming that Dropbox has synced by looking for files..."
     info "(This might fail if the list of files is out of date)"
@@ -602,7 +599,7 @@ function mainScript() {
       done
     done
 
-    Add some additional time just to be sure....
+    #Add some additional time just to be sure....
     for ((i=1; i<=6; i++)); do
       info "  Waiting for Dropbox to Sync files..."
       sleep 10
@@ -646,20 +643,20 @@ function mainScript() {
   # Ask for the administrator password upfront
   sudo -v
 
-  # installCommandLineTools
-  # installHomebrew
-  # checkTaps
-  # brewCleanup
-  # installXcode
-  # installDropbox
-  # installCaskApps
+  installCommandLineTools
+  installHomebrew
+  checkTaps
+  brewCleanup
+  installXcode
+  installDropbox
+  installHomebrewPackages
+  installCaskApps
   installAppStoreApps
-  # installDevApps
-  # installHomebrewPackages
-  # installRuby
-  # installRubyGems
-  # configureSSH
-  # configureMackup
+  installDevApps
+  installRuby
+  installRubyGems
+  configureSSH
+  configureMackup
 }
 
 ## SET SCRIPTNAME VARIABLE ##
@@ -707,10 +704,14 @@ function seek_confirmation() {
   #
   # Credt: https://github.com/kevva/dotfiles
   # ------------------------------------------------------
-  # echo ""
+
   input "$@"
-  read -p " (y/n) " -n 1
-  echo ""
+  if ${force}; then
+    notice "Forcing confirmation with '--force' flag set"
+  else
+    read -p " (y/n) " -n 1
+    echo ""
+  fi
 }
 
 function is_confirmed() {

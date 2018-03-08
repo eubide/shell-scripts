@@ -15,29 +15,16 @@ function mainScript() {
  echo -n
 }
 
-## SET SCRIPTNAME VARIABLE ##
-scriptName=$(basename "$0")
-
 function trapCleanup() {
-  # trapCleanup Function
-  # -----------------------------------
-  # Any actions that should be taken if the script is prematurely
-  # exited.  Always call this function at the top of your script.
-  # -----------------------------------
   echo ""
   # Delete temp files, if any
   if [ -d "${tmpDir}" ] ; then
     rm -r "${tmpDir}"
   fi
-  die "Exit trapped."
+  die "Exit trapped. In function: '${FUNCNAME[*]}'"
 }
 
 function safeExit() {
-  # safeExit
-  # -----------------------------------
-  # Non destructive exit for when script exits naturally.
-  # Usage: Add this function at the end of every script.
-  # -----------------------------------
   # Delete temp files, if any
   if [ -d "${tmpDir}" ] ; then
     rm -r "${tmpDir}"
@@ -46,11 +33,11 @@ function safeExit() {
   exit
 }
 
+# Set Base Variables
+# ----------------------
+scriptName=$(basename "$0")
+
 # Set Flags
-# -----------------------------------
-# Flags which can be overridden by user input.
-# Default values are below
-# -----------------------------------
 quiet=false
 printLog=false
 verbose=false
@@ -59,11 +46,17 @@ strict=false
 debug=false
 args=()
 
+# Set Colors
+bold=$(tput bold)
+reset=$(tput sgr0)
+purple=$(tput setaf 171)
+red=$(tput setaf 1)
+green=$(tput setaf 76)
+tan=$(tput setaf 3)
+blue=$(tput setaf 38)
+underline=$(tput sgr 0 1)
+
 # Set Temp Directory
-# -----------------------------------
-# Create temp directory with three random numbers and the process ID
-# in the name.  This directory is removed automatically at exit.
-# -----------------------------------
 tmpDir="/tmp/${scriptName}.$RANDOM.$RANDOM.$RANDOM.$$"
 (umask 077 && mkdir "${tmpDir}") || {
   die "Could not create temporary directory! Exiting."
@@ -72,17 +65,11 @@ tmpDir="/tmp/${scriptName}.$RANDOM.$RANDOM.$RANDOM.$$"
 # Logging
 # -----------------------------------
 # Log is only used when the '-l' flag is set.
-#
-# To never save a logfile change variable to '/dev/null'
-# Save to Desktop use: $HOME/Desktop/${scriptBasename}.log
-# Save to standard user log location use: $HOME/Library/Logs/${scriptBasename}.log
-# -----------------------------------
 logFile="${HOME}/Library/Logs/${scriptBasename}.log"
 
 
 # Options and Usage
 # -----------------------------------
-# Print usage
 usage() {
   echo -n "${scriptName} [OPTION]... [FILE]...
 
@@ -141,7 +128,7 @@ unset options
 # Print help if no arguments were passed.
 # Uncomment to force arguments when invoking the script
 # -------------------------------------
-# [[ $# -eq 0 ]] && set -- "--help"
+[[ $# -eq 0 ]] && set -- "--help"
 
 # Read the options and set stuff
 while [[ $1 = -?* ]]; do
@@ -167,28 +154,14 @@ done
 args+=("$@")
 
 
-# Logging and Colors
+# Logging & Feedback
 # -----------------------------------------------------
-# Here we set the colors for our script feedback.
-# Example usage: success "sometext"
-#------------------------------------------------------
-
-# Set Colors
-bold=$(tput bold)
-reset=$(tput sgr0)
-purple=$(tput setaf 171)
-red=$(tput setaf 1)
-green=$(tput setaf 76)
-tan=$(tput setaf 3)
-blue=$(tput setaf 38)
-underline=$(tput sgr 0 1)
-
 function _alert() {
   if [ "${1}" = "error" ]; then local color="${bold}${red}"; fi
   if [ "${1}" = "warning" ]; then local color="${red}"; fi
   if [ "${1}" = "success" ]; then local color="${green}"; fi
   if [ "${1}" = "debug" ]; then local color="${purple}"; fi
-  if [ "${1}" = "header" ]; then local color="${bold}""${tan}"; fi
+  if [ "${1}" = "header" ]; then local color="${bold}${tan}"; fi
   if [ "${1}" = "input" ]; then local color="${bold}"; fi
   if [ "${1}" = "info" ] || [ "${1}" = "notice" ]; then local color=""; fi
   # Don't use colors on pipes or non-recognized terminals
@@ -216,6 +189,40 @@ function success ()   { local _message="${*}"; echo -e "$(_alert success)"; }
 function input()      { local _message="${*}"; echo -n "$(_alert input)"; }
 function header()     { local _message="== ${*} ==  "; echo -e "$(_alert header)"; }
 function verbose()    { if ${verbose}; then debug "$@"; fi }
+
+# SEEKING CONFIRMATION
+# ------------------------------------------------------
+function seek_confirmation() {
+  # echo ""
+  input "$@"
+  if "${force}"; then
+    notice "Forcing confirmation with '--force' flag set"
+  else
+    read -p " (y/n) " -n 1
+    echo ""
+  fi
+}
+function is_confirmed() {
+  if "${force}"; then
+    return 0
+  else
+    if [[ "${REPLY}" =~ ^[Yy]$ ]]; then
+      return 0
+    fi
+    return 1
+  fi
+}
+function is_not_confirmed() {
+  if "${force}"; then
+    return 1
+  else
+    if [[ "${REPLY}" =~ ^[Nn]$ ]]; then
+      return 0
+    fi
+    return 1
+  fi
+}
+
 
 # Trap bad exits with your cleanup function
 trap trapCleanup EXIT INT TERM
